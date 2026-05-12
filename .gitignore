@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.dist/
+build/
+.wheels/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+.env/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# IDEs / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Project outputs
+/data/raw/
+/data/cleaned/
+/data/annotations/
+/graph/
+/reports/
+/video/
+
+# Datasets (if re-downloadable)
+/知识图谱构建数据集/

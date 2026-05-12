@@ -1,0 +1,110 @@
+{
+  "version": "1.0",
+  "relation_types": [
+    {
+      "name": "HAS_SYSTEM",
+      "cn_name": "包含系统",
+      "from": ["Aircraft"],
+      "to": ["System"],
+      "description": "飞行器包含某系统。"
+    },
+    {
+      "name": "HAS_SUBSYSTEM",
+      "cn_name": "包含子系统",
+      "from": ["System"],
+      "to": ["Subsystem"],
+      "description": "系统包含子系统。"
+    },
+    {
+      "name": "HAS_COMPONENT",
+      "cn_name": "包含部件",
+      "from": ["System", "Subsystem"],
+      "to": ["Component"],
+      "description": "系统/子系统包含部件。"
+    },
+    {
+      "name": "PART_OF",
+      "cn_name": "属于",
+      "from": ["Component", "Subsystem", "System"],
+      "to": ["Subsystem", "System", "Aircraft"],
+      "description": "部件/子系统/系统的层级归属关系。"
+    },
+    {
+      "name": "AFFECTS",
+      "cn_name": "影响",
+      "from": ["FaultMode", "FaultCause"],
+      "to": ["Component", "System", "Subsystem"],
+      "description": "故障模式或原因影响某部件/系统。"
+    },
+    {
+      "name": "CAUSES",
+      "cn_name": "导致",
+      "from": ["FaultCause"],
+      "to": ["FaultMode"],
+      "description": "故障原因导致故障模式。"
+    },
+    {
+      "name": "MANIFESTS_AS",
+      "cn_name": "表现为",
+      "from": ["FaultMode"],
+      "to": ["FaultSymptom"],
+      "description": "故障模式表现为故障现象。"
+    },
+    {
+      "name": "OCCURS_IN",
+      "cn_name": "发生于",
+      "from": ["FaultMode", "FaultSymptom"],
+      "to": ["Component", "System", "Subsystem"],
+      "description": "故障模式或现象发生在某部件/系统。"
+    },
+    {
+      "name": "HAS_SOLUTION",
+      "cn_name": "对应维修动作",
+      "from": ["FaultMode", "FaultCause", "FaultSymptom"],
+      "to": ["MaintenanceAction"],
+      "description": "故障对应的维修动作。"
+    },
+    {
+      "name": "USES_PROCEDURE",
+      "cn_name": "采用规程",
+      "from": ["MaintenanceAction"],
+      "to": ["Procedure"],
+      "description": "维修动作采用某规程。"
+    },
+    {
+      "name": "REQUIRES_TOOL",
+      "cn_name": "需要工具",
+      "from": ["MaintenanceAction"],
+      "to": ["Tool"],
+      "description": "维修动作需要使用的工具。"
+    },
+    {
+      "name": "REQUIRES_MATERIAL",
+      "cn_name": "需要材料",
+      "from": ["MaintenanceAction"],
+      "to": ["Material"],
+      "description": "维修动作需要的材料/工艺。"
+    },
+    {
+      "name": "APPLICABLE_TO",
+      "cn_name": "适用于",
+      "from": ["Procedure", "MaintenanceAction"],
+      "to": ["Aircraft", "System", "Subsystem", "Component"],
+      "description": "规程或维修动作的适用对象。"
+    },
+    {
+      "name": "MEASURED_BY",
+      "cn_name": "检测参数",
+      "from": ["Component", "System", "Subsystem"],
+      "to": ["Parameter"],
+      "description": "部件/系统可用某参数进行检测。"
+    },
+    {
+      "name": "MENTIONED_IN",
+      "cn_name": "提及于",
+      "from": ["Aircraft", "System", "Subsystem", "Component", "FaultSymptom", "FaultCause", "FaultMode", "MaintenanceAction", "Procedure"],
+      "to": ["Document"],
+      "description": "实体在文档中被提及。"
+    }
+  ]
+}

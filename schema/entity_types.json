@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "domain": "航空器维修",
+  "entity_types": [
+    {
+      "name": "Aircraft",
+      "cn_name": "飞行器",
+      "description": "具体型号或机型。",
+      "key_properties": ["name", "model", "manufacturer"],
+      "example": "某型变构飞行器"
+    },
+    {
+      "name": "System",
+      "cn_name": "系统",
+      "description": "飞行器内的功能系统，如动力系统。",
+      "key_properties": ["name"],
+      "example": "动力系统"
+    },
+    {
+      "name": "Subsystem",
+      "cn_name": "子系统",
+      "description": "系统内的子级功能模块。",
+      "key_properties": ["name"],
+      "example": "燃油供给子系统"
+    },
+    {
+      "name": "Component",
+      "cn_name": "部件",
+      "description": "可维护或更换的部件/组件。",
+      "key_properties": ["name", "part_number"],
+      "example": "燃油泵"
+    },
+    {
+      "name": "Material",
+      "cn_name": "材料/工艺",
+      "description": "维修涉及的材料或工艺。",
+      "key_properties": ["name"],
+      "example": "密封胶"
+    },
+    {
+      "name": "Tool",
+      "cn_name": "工具",
+      "description": "维修操作所需工具或设备。",
+      "key_properties": ["name"],
+      "example": "扭矩扳手"
+    },
+    {
+      "name": "Procedure",
+      "cn_name": "维修规程",
+      "description": "成套的维修流程或规范条目。",
+      "key_properties": ["name", "doc_id"],
+      "example": "燃油泵更换流程"
+    },
+    {
+      "name": "FaultSymptom",
+      "cn_name": "故障现象",
+      "description": "可观察到的症状。",
+      "key_properties": ["name"],
+      "example": "推力不足"
+    },
+    {
+      "name": "FaultCause",
+      "cn_name": "故障原因",
+      "description": "导致故障的原因。",
+      "key_properties": ["name"],
+      "example": "燃油压力不足"
+    },
+    {
+      "name": "FaultMode",
+      "cn_name": "故障模式",
+      "description": "更结构化的故障描述。",
+      "key_properties": ["name"],
+      "example": "燃油泵失效"
+    },
+    {
+      "name": "MaintenanceAction",
+      "cn_name": "维修动作",
+      "description": "具体维修操作。",
+      "key_properties": ["name"],
+      "example": "更换燃油泵"
+    },
+    {
+      "name": "Parameter",
+      "cn_name": "参数/指标",
+      "description": "关键技术参数或检测指标。",
+      "key_properties": ["name", "unit"],
+      "example": "燃油压力"
+    },
+    {
+      "name": "Document",
+      "cn_name": "文档",
+      "description": "来源文档或说明书条目。",
+      "key_properties": ["title", "doc_id"],
+      "example": "维修手册第3章"
+    }
+  ]
+}

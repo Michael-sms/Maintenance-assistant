@@ -43,10 +43,8 @@ logs/
 Thumbs.db
 
 # Project outputs
-/data/raw/
-/data/cleaned/
-/data/annotations/
-/graph/
+data/
+graph/
 /reports/
 /video/
 

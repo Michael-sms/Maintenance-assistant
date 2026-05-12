@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "common_attributes": [
+    { "name": "name", "type": "string", "required": true, "description": "标准名称" },
+    { "name": "aliases", "type": "string[]", "required": false, "description": "别名/同义词" },
+    { "name": "description", "type": "string", "required": false, "description": "简要说明" },
+    { "name": "source_doc", "type": "string", "required": false, "description": "来源文档" },
+    { "name": "source_section", "type": "string", "required": false, "description": "来源段落/章节" },
+    { "name": "confidence", "type": "number", "required": false, "description": "抽取置信度 0-1" }
+  ],
+  "entity_attributes": {
+    "Aircraft": [
+      { "name": "model", "type": "string", "required": false, "description": "型号" },
+      { "name": "manufacturer", "type": "string", "required": false, "description": "制造商" },
+      { "name": "role", "type": "string", "required": false, "description": "用途/任务类型" }
+    ],
+    "System": [
+      { "name": "function", "type": "string", "required": false, "description": "系统功能" }
+    ],
+    "Subsystem": [
+      { "name": "function", "type": "string", "required": false, "description": "子系统功能" }
+    ],
+    "Component": [
+      { "name": "part_number", "type": "string", "required": false, "description": "部件编号" },
+      { "name": "location", "type": "string", "required": false, "description": "安装位置" },
+      { "name": "lifetime", "type": "string", "required": false, "description": "寿命/更换周期" }
+    ],
+    "Material": [
+      { "name": "spec", "type": "string", "required": false, "description": "规格" }
+    ],
+    "Tool": [
+      { "name": "spec", "type": "string", "required": false, "description": "规格" }
+    ],
+    "Procedure": [
+      { "name": "doc_id", "type": "string", "required": false, "description": "规程编号" },
+      { "name": "step_count", "type": "number", "required": false, "description": "步骤数" }
+    ],
+    "FaultSymptom": [
+      { "name": "severity", "type": "string", "required": false, "description": "严重程度" }
+    ],
+    "FaultCause": [
+      { "name": "category", "type": "string", "required": false, "description": "原因类别" }
+    ],
+    "FaultMode": [
+      { "name": "mode_code", "type": "string", "required": false, "description": "故障模式编码" }
+    ],
+    "MaintenanceAction": [
+      { "name": "duration", "type": "string", "required": false, "description": "预计耗时" },
+      { "name": "skill_level", "type": "string", "required": false, "description": "技能等级" }
+    ],
+    "Parameter": [
+      { "name": "unit", "type": "string", "required": false, "description": "单位" },
+      { "name": "normal_range", "type": "string", "required": false, "description": "正常范围" }
+    ],
+    "Document": [
+      { "name": "title", "type": "string", "required": true, "description": "标题" },
+      { "name": "doc_id", "type": "string", "required": false, "description": "文档编号" },
+      { "name": "doc_type", "type": "string", "required": false, "description": "文档类型" }
+    ]
+  },
+  "relation_attributes": {
+    "default": [
+      { "name": "evidence", "type": "string", "required": false, "description": "证据句" },
+      { "name": "confidence", "type": "number", "required": false, "description": "抽取置信度 0-1" }
+    ]
+  }
+}

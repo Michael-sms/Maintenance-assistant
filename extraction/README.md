@@ -1,6 +1,6 @@
 # 信息抽取流水线
 
-本目录提供**文本清洗 → 分句 → 实体抽取 → 关系抽取 → 初步去重**的可运行流水线，输入默认来自 `知识图谱构建数据集/`，并保留来源目录类别字段（变构飞行器/飞行器/维修类）。支持 `.pdf` 文本抽取（依赖 `pypdf`），并过滤目录页/乱码行，保留页码字段。
+本目录提供**文本清洗 → 分句 → 实体抽取 → 关系抽取 → 初步去重**的可运行流水线，输入默认来自 `知识图谱构建数据集/`，并保留来源目录类别字段（变构飞行器/飞行器/维修类）。支持 `.pdf` 文本抽取（依赖 `pypdf`），会过滤目录页/乱码行/元数据页，并保留页码字段。
 
 ## 目录
 - `preprocess.py`：文本清洗与分句，生成 `data/cleaned/sentences.jsonl`
@@ -17,6 +17,11 @@ python -m extraction.pipeline --demo
 ## 运行真实数据
 ```powershell
 python -m extraction.pipeline --input "知识图谱构建数据集" --data data
+```
+
+## 统计概念与关系数量
+```powershell
+python -m extraction.count_stats --output data/annotations
 ```
 
 ## 扩展方式

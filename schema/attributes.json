@@ -8,6 +8,7 @@
     { "name": "source_category", "type": "string", "required": false, "description": "来源目录类别（变构飞行器/飞行器/维修类）" },
     { "name": "source_page_index", "type": "number", "required": false, "description": "来源页索引（从0开始）" },
     { "name": "source_page_number", "type": "number", "required": false, "description": "来源页码（从1开始）" },
+    { "name": "extraction_method", "type": "string", "required": false, "description": "抽取方法（rule/llm/hybrid）" },
     { "name": "source_doc", "type": "string", "required": false, "description": "来源文档" },
     { "name": "source_section", "type": "string", "required": false, "description": "来源段落/章节" },
     { "name": "confidence", "type": "number", "required": false, "description": "抽取置信度 0-1" }

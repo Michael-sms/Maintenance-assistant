@@ -15,6 +15,8 @@ KEYWORDS = {
     "CAUSES": ["导致", "引起"],
     "MANIFESTS_AS": ["表现为", "症状为"],
     "HAS_COMPONENT": ["包含", "包括", "由"],
+    "HAS_SYSTEM": ["系统"],
+    "HAS_SUBSYSTEM": ["子系统"],
     "PART_OF": ["属于", "隶属"],
     "APPLICABLE_TO": ["适用于"],
     "USES_PROCEDURE": ["按照", "依照", "依据"],
@@ -22,6 +24,8 @@ KEYWORDS = {
     "REQUIRES_MATERIAL": ["需要", "涂覆", "使用"],
     "OCCURS_IN": ["发生在", "位于"],
     "HAS_SOLUTION": ["处理", "维修", "更换", "修复"],
+    "AFFECTS": ["影响", "导致", "引起", "使"],
+    "MEASURED_BY": ["参数", "指标", "检测", "测量"],
 }
 
 
@@ -55,7 +59,12 @@ def extract_relations(
     grouped = group_entities(entities)
     relations: List[dict] = []
 
-    def add_relation(rel_type: str, from_entities: List[dict], to_entities: List[dict]) -> None:
+    def add_relation(
+        rel_type: str,
+        from_entities: List[dict],
+        to_entities: List[dict],
+        confidence: float = 0.5,
+    ) -> None:
         for source in from_entities:
             for target in to_entities:
                 relations.append(
@@ -73,30 +82,54 @@ def extract_relations(
                         "source_category": source_category,
                         "source_page_index": source_page_index,
                         "source_page_number": source_page_number,
-                        "confidence": 0.5,
+                        "confidence": confidence,
                     }
                 )
 
     if sentence_contains(sentence, KEYWORDS["CAUSES"]):
-        add_relation("CAUSES", grouped.get("FaultCause", []), grouped.get("FaultMode", []))
+        add_relation("CAUSES", grouped.get("FaultCause", []), grouped.get("FaultMode", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["MANIFESTS_AS"]):
-        add_relation("MANIFESTS_AS", grouped.get("FaultMode", []), grouped.get("FaultSymptom", []))
+        add_relation("MANIFESTS_AS", grouped.get("FaultMode", []), grouped.get("FaultSymptom", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["HAS_COMPONENT"]):
-        add_relation("HAS_COMPONENT", grouped.get("System", []) + grouped.get("Subsystem", []), grouped.get("Component", []))
+        add_relation("HAS_COMPONENT", grouped.get("System", []) + grouped.get("Subsystem", []), grouped.get("Component", []), 0.6)
+    if sentence_contains(sentence, KEYWORDS["HAS_SYSTEM"]):
+        add_relation("HAS_SYSTEM", grouped.get("Aircraft", []), grouped.get("System", []), 0.5)
+    if sentence_contains(sentence, KEYWORDS["HAS_SUBSYSTEM"]):
+        add_relation("HAS_SUBSYSTEM", grouped.get("System", []), grouped.get("Subsystem", []), 0.5)
     if sentence_contains(sentence, KEYWORDS["PART_OF"]):
-        add_relation("PART_OF", grouped.get("Component", []) + grouped.get("Subsystem", []), grouped.get("System", []) + grouped.get("Aircraft", []))
+        add_relation("PART_OF", grouped.get("Component", []) + grouped.get("Subsystem", []), grouped.get("System", []) + grouped.get("Aircraft", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["APPLICABLE_TO"]):
-        add_relation("APPLICABLE_TO", grouped.get("Procedure", []) + grouped.get("MaintenanceAction", []), grouped.get("Aircraft", []) + grouped.get("System", []) + grouped.get("Component", []))
+        add_relation("APPLICABLE_TO", grouped.get("Procedure", []) + grouped.get("MaintenanceAction", []), grouped.get("Aircraft", []) + grouped.get("System", []) + grouped.get("Component", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["USES_PROCEDURE"]):
-        add_relation("USES_PROCEDURE", grouped.get("MaintenanceAction", []), grouped.get("Procedure", []))
+        add_relation("USES_PROCEDURE", grouped.get("MaintenanceAction", []), grouped.get("Procedure", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["REQUIRES_TOOL"]):
-        add_relation("REQUIRES_TOOL", grouped.get("MaintenanceAction", []), grouped.get("Tool", []))
+        add_relation("REQUIRES_TOOL", grouped.get("MaintenanceAction", []), grouped.get("Tool", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["REQUIRES_MATERIAL"]):
-        add_relation("REQUIRES_MATERIAL", grouped.get("MaintenanceAction", []), grouped.get("Material", []))
+        add_relation("REQUIRES_MATERIAL", grouped.get("MaintenanceAction", []), grouped.get("Material", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["OCCURS_IN"]):
-        add_relation("OCCURS_IN", grouped.get("FaultMode", []) + grouped.get("FaultSymptom", []), grouped.get("Component", []) + grouped.get("System", []) + grouped.get("Subsystem", []))
+        add_relation("OCCURS_IN", grouped.get("FaultMode", []) + grouped.get("FaultSymptom", []), grouped.get("Component", []) + grouped.get("System", []) + grouped.get("Subsystem", []), 0.6)
     if sentence_contains(sentence, KEYWORDS["HAS_SOLUTION"]):
-        add_relation("HAS_SOLUTION", grouped.get("FaultMode", []) + grouped.get("FaultCause", []) + grouped.get("FaultSymptom", []), grouped.get("MaintenanceAction", []))
+        add_relation("HAS_SOLUTION", grouped.get("FaultMode", []) + grouped.get("FaultCause", []) + grouped.get("FaultSymptom", []), grouped.get("MaintenanceAction", []), 0.6)
+    if sentence_contains(sentence, KEYWORDS["AFFECTS"]):
+        add_relation("AFFECTS", grouped.get("FaultMode", []) + grouped.get("FaultCause", []), grouped.get("Component", []) + grouped.get("System", []) + grouped.get("Subsystem", []), 0.5)
+    if sentence_contains(sentence, KEYWORDS["MEASURED_BY"]):
+        add_relation("MEASURED_BY", grouped.get("Component", []) + grouped.get("System", []) + grouped.get("Subsystem", []), grouped.get("Parameter", []), 0.5)
+
+    if grouped.get("Aircraft") and grouped.get("System"):
+        add_relation("HAS_SYSTEM", grouped.get("Aircraft", []), grouped.get("System", []), 0.4)
+    if grouped.get("System") and grouped.get("Subsystem"):
+        add_relation("HAS_SUBSYSTEM", grouped.get("System", []), grouped.get("Subsystem", []), 0.4)
+    if (grouped.get("System") or grouped.get("Subsystem")) and grouped.get("Component"):
+        add_relation("HAS_COMPONENT", grouped.get("System", []) + grouped.get("Subsystem", []), grouped.get("Component", []), 0.4)
+
+    if grouped.get("Document"):
+        documents = grouped.get("Document", [])
+        others: List[dict] = []
+        for entity_type, items in grouped.items():
+            if entity_type == "Document":
+                continue
+            others.extend(items)
+        add_relation("MENTIONED_IN", others, documents, 0.4)
 
     return relations
 

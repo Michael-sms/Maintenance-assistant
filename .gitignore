@@ -16,6 +16,8 @@ build/
 venv/
 ENV/
 .env/
+.env
+.env.*
 
 # Test / coverage
 .pytest_cache/

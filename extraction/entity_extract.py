@@ -106,6 +106,9 @@ def run(clean_dir: Path, output_dir: Path, lexicon_dir: Path) -> Path:
                 "mention": entity["mention"],
                 "sentence_id": item["id"],
                 "source_file": item["source_file"],
+                "source_category": item.get("source_category", ""),
+                "source_page_index": item.get("source_page_index"),
+                "source_page_number": item.get("source_page_number"),
                 "confidence": 0.6,
             }
             records.append(record)

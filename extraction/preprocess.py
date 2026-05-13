@@ -18,6 +18,47 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
+def is_toc_line(line: str) -> bool:
+    if "目录" in line:
+        return True
+    if re.search(r"\.{2,}\s*\d+$", line):
+        return True
+    if re.search(r"…{2,}\s*\d+$", line):
+        return True
+    return False
+
+
+def is_garbled_line(line: str) -> bool:
+    stripped = line.strip()
+    if len(stripped) < 2:
+        return True
+    non_space = re.sub(r"\s+", "", stripped)
+    if not non_space:
+        return True
+    if re.fullmatch(r"[\d\W_]+", non_space):
+        return True
+    valid = re.findall(r"[A-Za-z0-9\u4e00-\u9fff]", non_space)
+    ratio = len(valid) / max(len(non_space), 1)
+    return ratio < 0.3
+
+
+def clean_lines(text: str) -> tuple[str, int, int]:
+    lines = text.split("\n")
+    kept: list[str] = []
+    toc_count = 0
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if is_toc_line(line):
+            toc_count += 1
+            continue
+        if is_garbled_line(line):
+            continue
+        kept.append(line)
+    return "\n".join(kept), toc_count, len(kept)
+
+
 def split_sentences(text: str) -> list[str]:
     text = text.replace("\n", "\n")
     parts = re.split(r"(?<=[。！？!?；;])\s*", text)
@@ -32,8 +73,24 @@ def split_sentences(text: str) -> list[str]:
 
 def iter_text_files(input_dir: Path) -> Iterable[Path]:
     for path in input_dir.rglob("*"):
-        if path.is_file() and path.suffix.lower() in {".txt", ".md"}:
+        if path.is_file() and path.suffix.lower() in {".txt", ".md", ".pdf"}:
             yield path
+
+
+def read_pdf_pages(file_path: Path) -> list[str]:
+    try:
+        from pypdf import PdfReader
+    except ModuleNotFoundError as exc:
+        raise SystemExit(
+            "Missing dependency 'pypdf'. Install with: pip install pypdf"
+        ) from exc
+
+    reader = PdfReader(str(file_path))
+    pages: list[str] = []
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        pages.append(page_text)
+    return pages
 
 
 def preprocess(input_dir: Path, output_dir: Path) -> Path:
@@ -42,20 +99,49 @@ def preprocess(input_dir: Path, output_dir: Path) -> Path:
     with sentences_path.open("w", encoding="utf-8") as writer:
         for file_path in iter_text_files(input_dir):
             rel_path = file_path.relative_to(input_dir)
-            cleaned_path = output_dir / rel_path
-            cleaned_path.parent.mkdir(parents=True, exist_ok=True)
-            text = file_path.read_text(encoding="utf-8", errors="ignore")
-            cleaned = normalize_text(text)
-            cleaned_path.write_text(cleaned, encoding="utf-8")
-            sentences = split_sentences(cleaned)
-            for idx, sentence in enumerate(sentences):
-                record = {
-                    "id": f"{rel_path.as_posix()}::{idx}",
-                    "sentence": sentence,
-                    "source_file": rel_path.as_posix(),
-                    "index": idx,
-                }
-                writer.write(json.dumps(record, ensure_ascii=False) + "\n")
+            source_category = rel_path.parts[0] if rel_path.parts else ""
+            if file_path.suffix.lower() == ".pdf":
+                cleaned_path = (output_dir / rel_path).with_suffix(".txt")
+                pages = read_pdf_pages(file_path)
+                cleaned_path.parent.mkdir(parents=True, exist_ok=True)
+                cleaned_pages: list[str] = []
+                for page_index, page_text in enumerate(pages):
+                    normalized = normalize_text(page_text)
+                    cleaned, toc_count, kept_count = clean_lines(normalized)
+                    if toc_count >= 5 and toc_count > kept_count:
+                        continue
+                    if cleaned:
+                        cleaned_pages.append(cleaned)
+                        sentences = split_sentences(cleaned)
+                        for idx, sentence in enumerate(sentences):
+                            record = {
+                                "id": f"{rel_path.as_posix()}::p{page_index}::{idx}",
+                                "sentence": sentence,
+                                "source_file": rel_path.as_posix(),
+                                "source_category": source_category,
+                                "source_page_index": page_index,
+                                "source_page_number": page_index + 1,
+                                "index": idx,
+                            }
+                            writer.write(json.dumps(record, ensure_ascii=False) + "\n")
+                cleaned_path.write_text("\n".join(cleaned_pages), encoding="utf-8")
+            else:
+                cleaned_path = output_dir / rel_path
+                cleaned_path.parent.mkdir(parents=True, exist_ok=True)
+                text = file_path.read_text(encoding="utf-8", errors="ignore")
+                cleaned = normalize_text(text)
+                cleaned, _, _ = clean_lines(cleaned)
+                cleaned_path.write_text(cleaned, encoding="utf-8")
+                sentences = split_sentences(cleaned)
+                for idx, sentence in enumerate(sentences):
+                    record = {
+                        "id": f"{rel_path.as_posix()}::{idx}",
+                        "sentence": sentence,
+                        "source_file": rel_path.as_posix(),
+                        "source_category": source_category,
+                        "index": idx,
+                    }
+                    writer.write(json.dumps(record, ensure_ascii=False) + "\n")
     return sentences_path
 
 

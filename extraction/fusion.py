@@ -25,14 +25,20 @@ def dedup_entities(entities_path: Path) -> list[dict]:
             merged[key] = {
                 **entity,
                 "mention_count": 1,
-                "sources": {entity["source_file"]},
+                "sources": {entity.get("source_file", "")},
+                "categories": {entity.get("source_category", "")},
+                "pages": {entity.get("source_page_number")},
             }
         else:
             item["mention_count"] += 1
-            item["sources"].add(entity["source_file"])
+            item["sources"].add(entity.get("source_file", ""))
+            item["categories"].add(entity.get("source_category", ""))
+            item["pages"].add(entity.get("source_page_number"))
             item["confidence"] = max(item.get("confidence", 0), entity.get("confidence", 0))
     for value in merged.values():
         value["sources"] = sorted(value["sources"])
+        value["categories"] = sorted(cat for cat in value["categories"] if cat)
+        value["pages"] = sorted(page for page in value["pages"] if page is not None)
     return list(merged.values())
 
 
@@ -46,13 +52,19 @@ def dedup_relations(relations_path: Path) -> list[dict]:
                 **relation,
                 "support_count": 1,
                 "evidence": {relation["sentence"]},
+                "categories": {relation.get("source_category", "")},
+                "pages": {relation.get("source_page_number")},
             }
         else:
             item["support_count"] += 1
             item["evidence"].add(relation["sentence"])
+            item["categories"].add(relation.get("source_category", ""))
+            item["pages"].add(relation.get("source_page_number"))
             item["confidence"] = max(item.get("confidence", 0), relation.get("confidence", 0))
     for value in merged.values():
         value["evidence"] = sorted(value["evidence"])[:5]
+        value["categories"] = sorted(cat for cat in value["categories"] if cat)
+        value["pages"] = sorted(page for page in value["pages"] if page is not None)
     return list(merged.values())
 
 

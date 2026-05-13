@@ -43,7 +43,15 @@ def sentence_contains(sentence: str, keywords: List[str]) -> bool:
     return any(keyword in sentence for keyword in keywords)
 
 
-def extract_relations(sentence: str, entities: List[dict]) -> List[dict]:
+def extract_relations(
+    sentence: str,
+    entities: List[dict],
+    source_file: str,
+    source_category: str,
+    sentence_id: str,
+    source_page_index: int | None,
+    source_page_number: int | None,
+) -> List[dict]:
     grouped = group_entities(entities)
     relations: List[dict] = []
 
@@ -59,7 +67,12 @@ def extract_relations(sentence: str, entities: List[dict]) -> List[dict]:
                         "to_id": target["id"],
                         "to_name": target["name"],
                         "to_type": target["type"],
+                        "sentence_id": sentence_id,
                         "sentence": sentence,
+                        "source_file": source_file,
+                        "source_category": source_category,
+                        "source_page_index": source_page_index,
+                        "source_page_number": source_page_number,
                         "confidence": 0.5,
                     }
                 )
@@ -102,7 +115,21 @@ def run(clean_dir: Path, output_dir: Path) -> Path:
     for item in iter_jsonl(sentence_path):
         sentence_id = item["id"]
         sentence = item["sentence"]
-        relations.extend(extract_relations(sentence, entities_by_sentence.get(sentence_id, [])))
+        source_file = item.get("source_file", "")
+        source_category = item.get("source_category", "")
+        source_page_index = item.get("source_page_index")
+        source_page_number = item.get("source_page_number")
+        relations.extend(
+            extract_relations(
+                sentence,
+                entities_by_sentence.get(sentence_id, []),
+                source_file,
+                source_category,
+                sentence_id,
+                source_page_index,
+                source_page_number,
+            )
+        )
 
     output_path = output_dir / "relations.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)

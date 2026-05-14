@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>飞行器维修助手</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div>
+          <h1>飞行器维修助手</h1>
+          <p class="subtitle">知识图谱对话与故障联查</p>
+        </div>
+        <button id="newChatBtn" class="new-chat">新建对话</button>
+        <div id="historyList" class="history"></div>
+      </aside>
+      <main class="main">
+        <div class="header">
+          <div>
+            <h2>知识问答 / 故障联查</h2>
+            <p class="muted">技能解析 → 查询执行 → LLM 包装</p>
+          </div>
+          <div id="statusBadge" class="status">就绪</div>
+        </div>
+        <section class="chat">
+          <div id="scrollArea" class="chat-scroll">
+            <div id="messages" class="messages"></div>
+          </div>
+          <div id="resultPanel" class="result-slot"></div>
+          <form id="composer" class="composer centered">
+            <textarea
+              id="input"
+              placeholder="输入故障现象、部件名称或查询指令..."
+            ></textarea>
+            <div class="actions">
+              <div id="suggestions" class="suggestions"></div>
+              <button id="sendBtn" type="submit">发送</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+    <script>
+      window.APP_CONFIG = {
+        useMock: false,
+        apiBase: ""
+      };
+    </script>
+    <script src="./app.js"></script>
+  </body>
+</html>

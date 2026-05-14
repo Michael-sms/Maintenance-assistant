@@ -46,7 +46,7 @@ Thumbs.db
 
 # Project outputs
 data/
-graph/
+graph/csv/
 /reports/
 /video/
 

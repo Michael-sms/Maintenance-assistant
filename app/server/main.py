@@ -211,6 +211,17 @@ def find_similar_entities(
 
 def heuristic_parse(text: str) -> dict[str, Any]:
     lowered = text.lower()
+    if any(key in text for key in ["包含", "有哪些部件", "由什么组成"]):
+        name = normalize_name(re.sub(r"包含|有哪些部件|由什么组成", " ", text))
+        return {"skill": "contains_query", "params": {"name": name}}
+    relation_keywords = ["子类", "故障类型", "维修内容", "维修重点", "核心部件", "需要", "存在", "属于"]
+    for keyword in relation_keywords:
+        if keyword in text:
+            name = normalize_name(re.sub("|".join(relation_keywords), " ", text))
+            return {
+                "skill": "entity_lookup",
+                "params": {"name": name, "relation": keyword}
+            }
     if any(key in text for key in ["路径", "关系", "链路"]):
         parts = re.split(r"与|和|到|->|→", text)
         if len(parts) >= 2:
@@ -298,7 +309,7 @@ def format_records(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def build_entity_query(include_aliases: bool) -> str:
+def build_entity_query(include_aliases: bool, with_relation_filter: bool = False) -> str:
     base = (
         "MATCH (n:Entity) "
         "WHERE toLower(n.name) CONTAINS toLower($name) "
@@ -308,10 +319,12 @@ def build_entity_query(include_aliases: bool) -> str:
             "OR any(alias IN coalesce(n.aliases, []) "
             "WHERE toLower(alias) CONTAINS toLower($name)) "
         )
+    base += "WITH n LIMIT $node_limit "
+    base += "OPTIONAL MATCH (n)-[r]-(m:Entity) "
+    if with_relation_filter:
+        base += "WHERE coalesce(r.raw_type, r.type) CONTAINS $relation "
     base += (
-        "WITH n LIMIT $node_limit "
-        "OPTIONAL MATCH (n)-[r]-(m:Entity) "
-        "RETURN n.name AS source, n.type AS source_type, r.type AS relation, "
+        "RETURN n.name AS source, n.type AS source_type, coalesce(r.raw_type, r.type) AS relation, "
         "m.name AS target, m.type AS target_type "
         "LIMIT $limit"
     )
@@ -332,7 +345,7 @@ def build_fault_query(include_aliases: bool) -> str:
         "ORDER BY rank "
         "LIMIT $node_limit "
         "OPTIONAL MATCH (n)-[r]-(m:Entity) "
-        "RETURN n.name AS source, n.type AS source_type, r.type AS relation, "
+        "RETURN n.name AS source, n.type AS source_type, coalesce(r.raw_type, r.type) AS relation, "
         "m.name AS target, m.type AS target_type "
         "LIMIT $limit"
     )
@@ -343,10 +356,18 @@ def execute_entity_lookup(
     client: Neo4jClient,
     name: str,
     limit: int,
-    include_aliases: bool
+    include_aliases: bool,
+    relation_filter: str | None = None
 ) -> dict[str, Any]:
-    query = build_entity_query(include_aliases)
-    records = client.run(query, name=name, node_limit=5, limit=limit)
+    use_relation_filter = bool(relation_filter)
+    query = build_entity_query(include_aliases, with_relation_filter=use_relation_filter)
+    records = client.run(
+        query,
+        name=name,
+        relation=relation_filter or "",
+        node_limit=5,
+        limit=limit
+    )
     return {"records": records, "graph": build_graph(records)}
 
 
@@ -403,10 +424,44 @@ def execute_fault_investigation(
     if last_records:
         return {"records": last_records, "graph": build_graph(last_records)}
 
-    raise HTTPException(
-        status_code=404,
-        detail="故障排查未命中结果，已扩展检索到最大轮次仍未找到。"
+    return {
+        "records": [],
+        "graph": {"nodes": [], "links": []},
+        "message": "故障排查未命中结果，已扩展检索到最大轮次仍未找到。"
+    }
+
+
+def execute_contains_query(client: Neo4jClient, name: str, limit: int) -> dict[str, Any]:
+    relation_filter = "包含"
+    query_out = (
+        "MATCH (n:Entity)-[r]-(m:Entity) "
+        "WHERE toLower(n.name) CONTAINS toLower($name) "
+        "AND coalesce(r.raw_type, r.type) CONTAINS $rel "
+        "RETURN n.name AS source, n.type AS source_type, coalesce(r.raw_type, r.type) AS relation, "
+        "m.name AS target, m.type AS target_type "
+        "LIMIT $limit"
     )
+    records = client.run(query_out, name=name, rel=relation_filter, limit=limit)
+    if records:
+        return {"records": records, "graph": build_graph(records)}
+
+    query_in = (
+        "MATCH (m:Entity)-[r]-(n:Entity) "
+        "WHERE toLower(n.name) CONTAINS toLower($name) "
+        "AND coalesce(r.raw_type, r.type) CONTAINS $rel "
+        "RETURN m.name AS source, m.type AS source_type, "
+        "'被包含于' AS relation, n.name AS target, n.type AS target_type "
+        "LIMIT $limit"
+    )
+    records = client.run(query_in, name=name, rel=relation_filter, limit=limit)
+    if records:
+        return {"records": records, "graph": build_graph(records)}
+
+    return {
+        "records": [],
+        "graph": {"nodes": [], "links": []},
+        "message": "未找到包含关系，可尝试更具体的部件名称或系统名称。"
+    }
 
 
 def execute_path_query(client: Neo4jClient, source: str, target: str) -> dict[str, Any]:
@@ -457,10 +512,38 @@ def execute_path_query(client: Neo4jClient, source: str, target: str) -> dict[st
 def compose_answer(input_text: str, skill: str, result: dict[str, Any]) -> dict[str, Any]:
     records = result.get("records", [])
     context_lines = format_records(records)
+    fallback_message = result.get("message") if not records else None
     if not os.getenv("DEEPSEEK_API_KEY"):
-        highlights = context_lines[:3] if context_lines else ["暂无关联关系，可尝试更具体的部件或故障描述"]
-        answer = "已完成知识图谱查询。" if records else "未找到相关关系，请尝试更具体的部件或故障描述。"
+        highlights = context_lines[:3] if context_lines else [fallback_message or "暂无关联关系，可尝试更具体的部件或故障描述"]
+        answer = "已完成知识图谱查询。" if records else (fallback_message or "未找到相关关系，请尝试更具体的部件或故障描述。")
         return {"answer": answer, "highlights": highlights}
+
+    prompt = (
+        "你是飞行器维修助手，需要把图谱查询结果包装成自然语言答复。"
+        "请输出 JSON，包含 answer 和 highlights（数组）。"
+    )
+    content = "\n".join(context_lines) or "无可用关系"
+    messages = [
+        {"role": "system", "content": prompt},
+        {
+            "role": "user",
+            "content": f"用户问题：{input_text}\n技能：{skill}\n关系：\n{content}"
+        }
+    ]
+    try:
+        raw = call_deepseek(messages)
+        parsed = try_parse_json(raw)
+        if parsed and "answer" in parsed:
+            return {
+                "answer": parsed.get("answer", ""),
+                "highlights": parsed.get("highlights", [])
+            }
+    except Exception:
+        pass
+
+    highlights = context_lines[:3] if context_lines else [fallback_message or "暂无关联关系"]
+    answer = "已完成知识图谱查询。" if records else (fallback_message or "未找到相关关系，请尝试更具体的部件或故障描述。")
+    return {"answer": answer, "highlights": highlights}
 
     prompt = (
         "你是飞行器维修助手，需要把图谱查询结果包装成自然语言答复。"
@@ -485,8 +568,8 @@ def compose_answer(input_text: str, skill: str, result: dict[str, Any]) -> dict[
     except Exception:
         pass
 
-    highlights = context_lines[:3] if context_lines else ["暂无关联关系"]
-    answer = "已完成知识图谱查询。" if records else "未找到相关关系，请尝试更具体的部件或故障描述。"
+    highlights = context_lines[:3] if context_lines else [fallback_message or "暂无关联关系"]
+    answer = "已完成知识图谱查询。" if records else (fallback_message or "未找到相关关系，请尝试更具体的部件或故障描述。")
     return {"answer": answer, "highlights": highlights}
 
 
@@ -520,7 +603,7 @@ def health() -> dict[str, str]:
 def parse_skill(request: ParseRequest) -> dict[str, Any]:
     if os.getenv("DEEPSEEK_API_KEY"):
         prompt = (
-            "请根据用户输入，选择 skill：entity_lookup、fault_investigation 或 path_query。"
+            "请根据用户输入，选择 skill：entity_lookup、fault_investigation、contains_query 或 path_query。"
             "并输出 JSON：{\"skill\":..., \"params\":{...}}。"
             "path_query 需要 source 和 target。"
         )
@@ -551,10 +634,14 @@ def execute_skill(request: ExecuteRequest) -> dict[str, Any]:
 
     if skill == "entity_lookup":
         name = params.get("name") or ""
-        return execute_entity_lookup(neo4j_client, name, limit, include_aliases)
+        relation_filter = params.get("relation")
+        return execute_entity_lookup(neo4j_client, name, limit, include_aliases, relation_filter)
     if skill == "fault_investigation":
         name = params.get("name") or ""
         return execute_fault_investigation(neo4j_client, name, limit, include_aliases)
+    if skill == "contains_query":
+        name = params.get("name") or ""
+        return execute_contains_query(neo4j_client, name, limit)
     if skill == "path_query":
         source = params.get("source") or ""
         target = params.get("target") or ""

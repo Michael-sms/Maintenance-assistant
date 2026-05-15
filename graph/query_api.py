@@ -38,7 +38,7 @@ def query_entity(name: str, limit: int) -> list[dict[str, Any]]:
 
     driver = GraphDatabase.driver(uri, auth=(user, password))
     query = (
-        "MATCH (n:Entity {name: $name})-[r]->(m:Entity) "
+        "MATCH (n:Entity {name: $name})-[r]-(m:Entity) "
         "RETURN n.name AS source, r.type AS relation, m.name AS target "
         "LIMIT $limit"
     )

@@ -77,6 +77,35 @@ def import_relations(session, rels_path: Path, batch_size: int) -> None:
         _insert_relations(session, batch)
 
 
+def import_triples(session, triples_path: Path, batch_size: int) -> None:
+    batch: list[dict] = []
+    for row in iter_csv(triples_path):
+        if not row.get(":START_ID") or not row.get(":END_ID"):
+            continue
+        batch.append(row)
+        if len(batch) >= batch_size:
+            _insert_triples(session, batch)
+            batch = []
+    if batch:
+        _insert_triples(session, batch)
+
+
+def _insert_triples(session, rows: list[dict]) -> None:
+    query = (
+        "UNWIND $rows AS row "
+        "WITH row, split(row[':START_ID'], '::') AS a_parts, split(row[':END_ID'], '::') AS b_parts "
+        "MERGE (a:Entity {id: row[':START_ID']}) "
+        "SET a.name = coalesce(a.name, a_parts[1]), "
+        "    a.type = coalesce(a.type, a_parts[0]) "
+        "MERGE (b:Entity {id: row[':END_ID']}) "
+        "SET b.name = coalesce(b.name, b_parts[1]), "
+        "    b.type = coalesce(b.type, b_parts[0]) "
+        "MERGE (a)-[r:RELATION {type: row[':TYPE']}]->(b) "
+        "SET r.type = coalesce(r.type, row[':TYPE'])"
+    )
+    session.run(query, rows=rows)
+
+
 def _insert_relations(session, rows: list[dict]) -> None:
     query = (
         "UNWIND $rows AS row "
@@ -107,7 +136,10 @@ def main() -> None:
     csv_dir = Path(args.csv)
     nodes_path = csv_dir / "entities.csv"
     rels_path = csv_dir / "relations.csv"
-    if not nodes_path.exists() or not rels_path.exists():
+    triples_path = csv_dir / "triples.csv"
+    has_nodes = nodes_path.exists() and rels_path.exists()
+    has_triples = triples_path.exists()
+    if not has_nodes and not has_triples:
         raise SystemExit("CSV files not found. Run export_csv first.")
 
     uri = load_env("NEO4J_URI", "bolt://localhost:7687")
@@ -116,8 +148,11 @@ def main() -> None:
 
     driver = GraphDatabase.driver(uri, auth=(user, password))
     with driver.session() as session:
-        import_nodes(session, nodes_path, args.batch)
-        import_relations(session, rels_path, args.batch)
+        if has_nodes:
+            import_nodes(session, nodes_path, args.batch)
+            import_relations(session, rels_path, args.batch)
+        else:
+            import_triples(session, triples_path, args.batch)
 
     driver.close()
     print("Neo4j import completed.")
